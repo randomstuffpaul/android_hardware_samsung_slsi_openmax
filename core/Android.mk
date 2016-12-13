@@ -7,7 +7,6 @@ LOCAL_SRC_FILES := \
 	Exynos_OMX_Component_Register.c \
 	Exynos_OMX_Core.c
 
-LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE := libExynosOMX_Core
 
 LOCAL_CFLAGS :=
@@ -31,7 +30,9 @@ ifeq ($(BOARD_USE_KHRONOS_OMX_HEADER), true)
 LOCAL_CFLAGS += -DUSE_KHRONOS_OMX_HEADER
 LOCAL_C_INCLUDES += $(EXYNOS_OMX_INC)/khronos
 else
+ifeq ($(BOARD_USE_ANDROID), true)
 LOCAL_C_INCLUDES += $(ANDROID_MEDIA_INC)/openmax
+endif
 endif
 
 include $(BUILD_SHARED_LIBRARY)

@@ -496,7 +496,7 @@ OMX_ERRORTYPE Exynos_SRP_Mp3_Decode_Block(OMX_COMPONENTTYPE *pOMXComponent, EXYN
 
 #ifdef SRP_DUMP_TO_FILE
     if (pExynosComponent->reInputData == OMX_FALSE) {
-        fwrite(pInputData->buffer.singlePlaneBuffer.dataBuffer, pInputData->dataLen, 1, inFile);
+        fwrite(pInputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE], pInputData->dataLen, 1, inFile);
     }
 #endif
 
@@ -506,7 +506,7 @@ OMX_ERRORTYPE Exynos_SRP_Mp3_Decode_Block(OMX_COMPONENTTYPE *pOMXComponent, EXYN
 
     /* Decoding mp3 frames by SRP */
     if (pExynosComponent->getAllDelayBuffer == OMX_FALSE) {
-        returnCodec = SRP_Decode(pInputData->buffer.singlePlaneBuffer.dataBuffer, pInputData->dataLen);
+        returnCodec = SRP_Decode(pInputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE], pInputData->dataLen);
 
         if (returnCodec >= 0) {
             if (pInputData->nFlags & OMX_BUFFERFLAG_EOS) {
@@ -588,14 +588,14 @@ OMX_ERRORTYPE Exynos_SRP_Mp3_Decode_Block(OMX_COMPONENTTYPE *pOMXComponent, EXYN
     returnCodec = SRP_Get_PCM(&dataBuffer, &dataLen);
     if (dataLen > 0) {
         pOutputData->dataLen = dataLen;
-        Exynos_OSAL_Memcpy(pOutputData->buffer.singlePlaneBuffer.dataBuffer, dataBuffer, dataLen);
+        Exynos_OSAL_Memcpy(pOutputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE], dataBuffer, dataLen);
     } else {
         pOutputData->dataLen = 0;
     }
 
 #ifdef SRP_DUMP_TO_FILE
     if (pOutputData->dataLen > 0)
-        fwrite(pOutputData->buffer.singlePlaneBuffer.dataBuffer, pOutputData->dataLen, 1, outFile);
+        fwrite(pOutputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE], pOutputData->dataLen, 1, outFile);
 #endif
 
     /* Delay EOS signal until all the PCM is returned from the SRP driver. */
@@ -762,8 +762,8 @@ OSCL_EXPORT_REF OMX_ERRORTYPE Exynos_OMX_ComponentInit(OMX_HANDLETYPE hComponent
 
     pExynosPort = &pExynosComponent->pExynosPort[INPUT_PORT_INDEX];
     pExynosPort->processData.allocSize = inputBufferSize;
-    pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer = Exynos_OSAL_Malloc(inputBufferSize);
-    if (pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer == NULL) {
+    pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] = Exynos_OSAL_Malloc(inputBufferSize);
+    if (pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] == NULL) {
         Exynos_OSAL_Log(EXYNOS_LOG_ERROR, "Input data buffer alloc failed");
         ret = OMX_ErrorInsufficientResources;
         goto EXIT_ERROR_5;
@@ -859,8 +859,8 @@ OSCL_EXPORT_REF OMX_ERRORTYPE Exynos_OMX_ComponentInit(OMX_HANDLETYPE hComponent
 
 EXIT_ERROR_6:
     pExynosPort = &pExynosComponent->pExynosPort[INPUT_PORT_INDEX];
-    Exynos_OSAL_Free(pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer);
-    pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer = NULL;
+    Exynos_OSAL_Free(pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE]);
+    pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] = NULL;
     pExynosPort->processData.allocSize = 0;
 EXIT_ERROR_5:
     SRP_Deinit();
@@ -900,9 +900,9 @@ OMX_ERRORTYPE Exynos_OMX_ComponentDeinit(OMX_HANDLETYPE hComponent)
     Exynos_OSAL_Free(pExynosComponent->componentName);
     pExynosComponent->componentName = NULL;
     pExynosPort = &pExynosComponent->pExynosPort[INPUT_PORT_INDEX];
-    if (pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer) {
-        Exynos_OSAL_Free(pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer);
-        pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer = NULL;
+    if (pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE]) {
+        Exynos_OSAL_Free(pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE]);
+        pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] = NULL;
         pExynosPort->processData.allocSize = 0;
     }
 

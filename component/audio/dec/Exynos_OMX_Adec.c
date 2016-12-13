@@ -564,7 +564,7 @@ OMX_ERRORTYPE Exynos_OutputBufferGetQueue(EXYNOS_OMX_BASECOMPONENT *pExynosCompo
             dataBuffer->dataValid = OMX_TRUE;
             /* dataBuffer->nFlags = dataBuffer->bufferHeader->nFlags; */
             /* dataBuffer->nTimeStamp = dataBuffer->bufferHeader->nTimeStamp; */
-            pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer = dataBuffer->bufferHeader->pBuffer;
+            pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] = dataBuffer->bufferHeader->pBuffer;
             pExynosPort->processData.allocSize = dataBuffer->bufferHeader->nAllocLen;
 
             Exynos_OSAL_Free(message);
@@ -615,7 +615,7 @@ OMX_BOOL Exynos_Preprocessor_InputData(OMX_COMPONENTTYPE *pOMXComponent)
 
         if (((inputData->allocSize) - (inputData->dataLen)) >= copySize) {
             if (copySize > 0)
-                Exynos_OSAL_Memcpy(inputData->buffer.singlePlaneBuffer.dataBuffer + inputData->dataLen, checkInputStream, copySize);
+                Exynos_OSAL_Memcpy(inputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] + inputData->dataLen, checkInputStream, copySize);
 
             inputUseBuffer->dataLen -= copySize;
             inputUseBuffer->remainDataLen -= copySize;

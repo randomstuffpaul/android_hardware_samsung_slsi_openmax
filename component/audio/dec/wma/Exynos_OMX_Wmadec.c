@@ -467,8 +467,8 @@ OMX_ERRORTYPE Exynos_FFMPEG_WmaDec_codecConfigure(OMX_COMPONENTTYPE *pOMXCompone
     CodecInfoHhr codecInfo;
     char extra_data[10];
 
-    Exynos_OSAL_Memcpy(&codecInfo, pInputData->buffer.singlePlaneBuffer.dataBuffer, codec_info_size);
-    Exynos_OSAL_Memcpy(extra_data, ((char*)pInputData->buffer.singlePlaneBuffer.dataBuffer) + codec_info_size,
+    Exynos_OSAL_Memcpy(&codecInfo, pInputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE], codec_info_size);
+    Exynos_OSAL_Memcpy(extra_data, ((char*)pInputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE]) + codec_info_size,
                                     codecInfo.codecSpecificDataSize);
 
     return FFmpeg_CodecOpen(ffmpeg, codecInfo.codecID, codecInfo.averageNumberOfbytesPerSecond * 8,
@@ -515,8 +515,8 @@ OMX_ERRORTYPE Exynos_FFMPEG_WmaDec_bufferProcess(OMX_COMPONENTTYPE *pOMXComponen
         pInputData->dataLen = pInputData->allocSize;
         pOutputData->dataLen = pOutputData->allocSize;
         ret = FFmpeg_Decode(&pWmaDec->ffmpeg,
-                            pInputData->buffer.singlePlaneBuffer.dataBuffer, (int*)&pInputData->dataLen,
-                            pOutputData->buffer.singlePlaneBuffer.dataBuffer, (int*)&pOutputData->dataLen);
+                            pInputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE], (int*)&pInputData->dataLen,
+                            pOutputData->multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE], (int*)&pOutputData->dataLen);
     }
 
     if (ret != OMX_ErrorNone) {
@@ -607,8 +607,8 @@ OSCL_EXPORT_REF OMX_ERRORTYPE Exynos_OMX_ComponentInit(OMX_HANDLETYPE hComponent
 
     /* Get input buffer info */
     pExynosPort = &pExynosComponent->pExynosPort[INPUT_PORT_INDEX];
-    pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer = Exynos_OSAL_Malloc(inputBufferSize);
-    if (pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer == NULL) {
+    pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] = Exynos_OSAL_Malloc(inputBufferSize);
+    if (pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] == NULL) {
         Exynos_OSAL_Log(EXYNOS_LOG_ERROR, "Input data buffer alloc failed");
         ret = OMX_ErrorInsufficientResources;
         goto EXIT_ERROR_3;
@@ -727,9 +727,9 @@ OMX_ERRORTYPE Exynos_OMX_ComponentDeinit(OMX_HANDLETYPE hComponent)
     Exynos_OSAL_Free(pExynosComponent->componentName);
     pExynosComponent->componentName = NULL;
     pExynosPort = &pExynosComponent->pExynosPort[INPUT_PORT_INDEX];
-    if (pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer) {
-        Exynos_OSAL_Free(pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer);
-        pExynosPort->processData.buffer.singlePlaneBuffer.dataBuffer = NULL;
+    if (pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE]) {
+        Exynos_OSAL_Free(pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE]);
+        pExynosPort->processData.multiPlaneBuffer.dataBuffer[AUDIO_DATA_PLANE] = NULL;
         pExynosPort->processData.allocSize = 0;
     }
 

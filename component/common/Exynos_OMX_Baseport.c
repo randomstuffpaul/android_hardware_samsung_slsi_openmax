@@ -85,6 +85,8 @@ OMX_ERRORTYPE Exynos_OMX_OutputBufferReturn(OMX_COMPONENTTYPE *pOMXComponent, OM
     if ((bufferHeader != NULL) && (bufferHeader->pBuffer != NULL))
         pExynosComponent->pCallbacks->FillBufferDone(pOMXComponent, pExynosComponent->callbackData, bufferHeader);
 
+    Exynos_OSAL_Log(EXYNOS_LOG_TRACE, "%s : %d, bufferHeader:0x%x", __FUNCTION__, __LINE__, bufferHeader);
+
     return ret;
 }
 
@@ -391,7 +393,7 @@ OMX_ERRORTYPE Exynos_OMX_EmptyThisBuffer(
 
     pExynosPort = &pExynosComponent->pExynosPort[INPUT_PORT_INDEX];
     if ((!CHECK_PORT_ENABLED(pExynosPort)) ||
-        ((CHECK_PORT_BEING_FLUSHED(pExynosPort) || CHECK_PORT_BEING_DISABLED(pExynosPort)) &&
+        (CHECK_PORT_BEING_FLUSHED(pExynosPort) &&
         (!CHECK_PORT_TUNNELED(pExynosPort) || !CHECK_PORT_BUFFER_SUPPLIER(pExynosPort))) ||
         ((pExynosComponent->transientState == EXYNOS_OMX_TransStateExecutingToIdle) &&
         (CHECK_PORT_TUNNELED(pExynosPort) && !CHECK_PORT_BUFFER_SUPPLIER(pExynosPort)))) {
@@ -496,7 +498,7 @@ OMX_ERRORTYPE Exynos_OMX_FillThisBuffer(
 
     pExynosPort = &pExynosComponent->pExynosPort[OUTPUT_PORT_INDEX];
     if ((!CHECK_PORT_ENABLED(pExynosPort)) ||
-        ((CHECK_PORT_BEING_FLUSHED(pExynosPort) || CHECK_PORT_BEING_DISABLED(pExynosPort)) &&
+        (CHECK_PORT_BEING_FLUSHED(pExynosPort) &&
         (!CHECK_PORT_TUNNELED(pExynosPort) || !CHECK_PORT_BUFFER_SUPPLIER(pExynosPort))) ||
         ((pExynosComponent->transientState == EXYNOS_OMX_TransStateExecutingToIdle) &&
         (CHECK_PORT_TUNNELED(pExynosPort) && !CHECK_PORT_BUFFER_SUPPLIER(pExynosPort)))) {
@@ -505,7 +507,7 @@ OMX_ERRORTYPE Exynos_OMX_FillThisBuffer(
     }
 
     Exynos_OSAL_MutexLock(pExynosPort->hPortMutex);
-    for (i = 0; i < pExynosPort->portDefinition.nBufferCountActual; i++) {
+    for (i = 0; i < MAX_BUFFER_NUM; i++) {
         if (pBuffer == pExynosPort->extendBufferHeader[i].OMXBufferHeader) {
             pExynosPort->extendBufferHeader[i].bBufferInOMX = OMX_TRUE;
             findBuffer = OMX_TRUE;
@@ -617,7 +619,6 @@ OMX_ERRORTYPE Exynos_OMX_Port_Constructor(OMX_HANDLETYPE hComponent)
 
     pExynosInputPort->bufferSemID = NULL;
     pExynosInputPort->assignedBufferNum = 0;
-    pExynosInputPort->nPlaneCnt = 0;
     pExynosInputPort->portState = OMX_StateMax;
     pExynosInputPort->bIsPortFlushed = OMX_FALSE;
     pExynosInputPort->bIsPortDisabled = OMX_FALSE;
@@ -626,7 +627,9 @@ OMX_ERRORTYPE Exynos_OMX_Port_Constructor(OMX_HANDLETYPE hComponent)
     pExynosInputPort->tunnelBufferNum = 0;
     pExynosInputPort->bufferSupplier = OMX_BufferSupplyUnspecified;
     pExynosInputPort->tunnelFlags = 0;
+    pExynosInputPort->supportFormat = NULL;
     pExynosInputPort->bNeedContigMem = OMX_FALSE;
+    pExynosInputPort->bDynamicDPBMode = OMX_FALSE;
     ret = Exynos_OSAL_SemaphoreCreate(&pExynosInputPort->loadedResource);
     if (ret != OMX_ErrorNone) {
         Exynos_OSAL_Free(pExynosInputPort->bufferStateAllocate);
@@ -709,7 +712,6 @@ OMX_ERRORTYPE Exynos_OMX_Port_Constructor(OMX_HANDLETYPE hComponent)
 
     pExynosOutputPort->bufferSemID = NULL;
     pExynosOutputPort->assignedBufferNum = 0;
-    pExynosOutputPort->nPlaneCnt = 0;
     pExynosOutputPort->portState = OMX_StateMax;
     pExynosOutputPort->bIsPortFlushed = OMX_FALSE;
     pExynosOutputPort->bIsPortDisabled = OMX_FALSE;
@@ -718,7 +720,9 @@ OMX_ERRORTYPE Exynos_OMX_Port_Constructor(OMX_HANDLETYPE hComponent)
     pExynosOutputPort->tunnelBufferNum = 0;
     pExynosOutputPort->bufferSupplier = OMX_BufferSupplyUnspecified;
     pExynosOutputPort->tunnelFlags = 0;
+    pExynosOutputPort->supportFormat = NULL;
     pExynosOutputPort->bNeedContigMem = OMX_FALSE;
+    pExynosOutputPort->bDynamicDPBMode = OMX_FALSE;
     ret = Exynos_OSAL_SemaphoreCreate(&pExynosOutputPort->loadedResource);
     if (ret != OMX_ErrorNone) {
         Exynos_OSAL_Free(pExynosOutputPort->bufferStateAllocate);
@@ -899,7 +903,7 @@ OMX_ERRORTYPE Exynos_Shared_BufferToData(EXYNOS_OMX_DATABUFFER *pUseBuffer, EXYN
 
     if (nPlane == ONE_PLANE) {
         /* Case of Shared Buffer, Only support singlePlaneBuffer */
-        pData->buffer.singlePlaneBuffer.dataBuffer = pUseBuffer->bufferHeader->pBuffer;
+        pData->multiPlaneBuffer.dataBuffer[0] = pUseBuffer->bufferHeader->pBuffer;
     } else {
         Exynos_OSAL_Log(EXYNOS_LOG_ERROR, "Can not support plane");
         ret = OMX_ErrorNotImplemented;
@@ -918,3 +922,32 @@ OMX_ERRORTYPE Exynos_Shared_BufferToData(EXYNOS_OMX_DATABUFFER *pUseBuffer, EXYN
 EXIT:
     return ret;
 }
+
+int Exynos_GetPlaneFromPort(EXYNOS_OMX_BASEPORT *pPort)
+{
+    int ret = 0;
+
+    if (pPort == NULL)
+        goto EXIT;
+
+    ret = pPort->processData.multiPlaneBuffer.validPlaneNum;
+
+EXIT:
+    return ret;
+}
+
+OMX_ERRORTYPE Exynos_SetPlaneToPort(EXYNOS_OMX_BASEPORT *pPort, int nPlaneNum)
+{
+    OMX_ERRORTYPE ret = OMX_ErrorNone;
+
+    if (pPort == NULL) {
+        ret = OMX_ErrorBadParameter;
+        goto EXIT;
+    }
+
+    pPort->processData.multiPlaneBuffer.validPlaneNum = nPlaneNum;
+
+EXIT:
+    return ret;
+}
+

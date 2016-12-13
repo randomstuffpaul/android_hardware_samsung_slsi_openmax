@@ -39,6 +39,7 @@ void    Exynos_OSAL_Free(OMX_PTR addr);
 OMX_PTR Exynos_OSAL_Memset(OMX_PTR dest, OMX_S32 c, OMX_S32 n);
 OMX_PTR Exynos_OSAL_Memcpy(OMX_PTR dest, OMX_PTR src, OMX_S32 n);
 OMX_PTR Exynos_OSAL_Memmove(OMX_PTR dest, OMX_PTR src, OMX_S32 n);
+OMX_S32 Exynos_OSAL_Memcmp(OMX_PTR dest, OMX_PTR src, OMX_S32 n);
 
 #ifdef __cplusplus
 }

@@ -43,10 +43,11 @@ typedef struct _EXYNOS_MFC_VP8ENC_HANDLE
     OMX_BOOL    bConfiguredMFCSrc;
     OMX_BOOL    bConfiguredMFCDst;
 
-    ExynosVideoDecOps           *pEncOps;
-    ExynosVideoDecBufferOps     *pInbufOps;
-    ExynosVideoDecBufferOps     *pOutbufOps;
+    ExynosVideoEncOps           *pEncOps;
+    ExynosVideoEncBufferOps     *pInbufOps;
+    ExynosVideoEncBufferOps     *pOutbufOps;
     ExynosVideoEncParam          encParam;
+    ExynosVideoInstInfo          videoInstInfo;
 } EXYNOS_MFC_VP8ENC_HANDLE;
 
 typedef struct _EXYNOS_VP8ENC_HANDLE

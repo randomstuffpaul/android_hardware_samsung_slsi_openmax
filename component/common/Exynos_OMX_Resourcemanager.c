@@ -41,7 +41,7 @@
 
 #define MAX_RESOURCE_VIDEO_DEC 8
 #define MAX_RESOURCE_VIDEO_ENC 8
-#define MAX_RESOURCE_AUDIO_DEC 1
+#define MAX_RESOURCE_AUDIO_DEC 10
 /* Add new resource block */
 
 typedef enum _EXYNOS_OMX_RESOURCE
@@ -301,8 +301,8 @@ OMX_ERRORTYPE Exynos_OMX_ResourceManager_Init()
 
     if (ret == OMX_ErrorNone) {
         Exynos_OSAL_MutexLock(ghVideoRMComponentListMutex);
-        Exynos_OSAL_Memset(gpRMList, NULL, (sizeof(EXYNOS_OMX_RM_COMPONENT_LIST*) * RESOURCE_MAX));
-        Exynos_OSAL_Memset(gpRMWaitList, NULL, (sizeof(EXYNOS_OMX_RM_COMPONENT_LIST*) * RESOURCE_MAX));
+        Exynos_OSAL_Memset(gpRMList, 0, (sizeof(EXYNOS_OMX_RM_COMPONENT_LIST*) * RESOURCE_MAX));
+        Exynos_OSAL_Memset(gpRMWaitList, 0, (sizeof(EXYNOS_OMX_RM_COMPONENT_LIST*) * RESOURCE_MAX));
         Exynos_OSAL_MutexUnlock(ghVideoRMComponentListMutex);
     }
 

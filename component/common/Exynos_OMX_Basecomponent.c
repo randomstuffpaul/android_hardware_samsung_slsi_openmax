@@ -63,7 +63,7 @@ OMX_ERRORTYPE Exynos_OMX_Check_SizeVersion(OMX_PTR header, OMX_U32 size)
         goto EXIT;
     }
     if (version->s.nVersionMajor != VERSIONMAJOR_NUMBER ||
-        version->s.nVersionMinor != VERSIONMINOR_NUMBER) {
+        version->s.nVersionMinor > VERSIONMINOR_NUMBER) {
         ret = OMX_ErrorVersionMismatch;
         goto EXIT;
     }
@@ -116,7 +116,7 @@ OMX_ERRORTYPE Exynos_OMX_GetComponentVersion(
 
     /* Fill UUID with handle address, PID and UID.
      * This should guarantee uiniqness */
-    compUUID[0] = (OMX_U32)pOMXComponent;
+    compUUID[0] = (OMX_U32)(uintptr_t)pOMXComponent;
     compUUID[1] = getpid();
     compUUID[2] = getuid();
     Exynos_OSAL_Memcpy(*pComponentUUID, compUUID, 3 * sizeof(*compUUID));
@@ -308,7 +308,8 @@ OMX_ERRORTYPE Exynos_OMX_ComponentStateSet(OMX_COMPONENTTYPE *pOMXComponent, OMX
                     }
                 } else {
                     if (CHECK_PORT_ENABLED(pExynosPort)) {
-                        Exynos_OSAL_SemaphoreWait(pExynosPort->unloadedResource);
+                        if (pExynosPort->assignedBufferNum > 0)
+                            Exynos_OSAL_SemaphoreWait(pExynosPort->unloadedResource);
                         while (Exynos_OSAL_GetElemNum(&pExynosPort->bufferQ) > 0) {
                             message = (EXYNOS_OMX_MESSAGE *)Exynos_OSAL_Dequeue(&pExynosPort->bufferQ);
                             if (message != NULL)
@@ -994,8 +995,10 @@ OMX_ERRORTYPE Exynos_OMX_GetParameter(
     case OMX_IndexParamPortDefinition:
     {
         OMX_PARAM_PORTDEFINITIONTYPE *portDefinition = (OMX_PARAM_PORTDEFINITIONTYPE *)ComponentParameterStructure;
-        OMX_U32                       portIndex = portDefinition->nPortIndex;
-        EXYNOS_OMX_BASEPORT          *pExynosPort;
+        OMX_U32                       portIndex      = portDefinition->nPortIndex;
+        EXYNOS_OMX_BASEPORT          *pExynosPort    = NULL;
+        /* except nSize, nVersion and nPortIndex */
+        int nOffset = sizeof(OMX_U32) + sizeof(OMX_VERSIONTYPE) + sizeof(OMX_U32);
 
         if (portIndex >= pExynosComponent->portParam.nPorts) {
             ret = OMX_ErrorBadPortIndex;
@@ -1007,7 +1010,9 @@ OMX_ERRORTYPE Exynos_OMX_GetParameter(
         }
 
         pExynosPort = &pExynosComponent->pExynosPort[portIndex];
-        Exynos_OSAL_Memcpy(portDefinition, &pExynosPort->portDefinition, portDefinition->nSize);
+        Exynos_OSAL_Memcpy(((char *)portDefinition) + nOffset,
+                           ((char *)&pExynosPort->portDefinition) + nOffset,
+                           portDefinition->nSize - nOffset);
     }
         break;
     case OMX_IndexParamPriorityMgmt:
@@ -1147,7 +1152,9 @@ OMX_ERRORTYPE Exynos_OMX_SetParameter(
     {
         OMX_PARAM_PORTDEFINITIONTYPE *portDefinition = (OMX_PARAM_PORTDEFINITIONTYPE *)ComponentParameterStructure;
         OMX_U32                       portIndex = portDefinition->nPortIndex;
-        EXYNOS_OMX_BASEPORT          *pExynosPort;
+        EXYNOS_OMX_BASEPORT          *pExynosPort = NULL;
+        /* except nSize, nVersion and nPortIndex */
+        int nOffset = sizeof(OMX_U32) + sizeof(OMX_VERSIONTYPE) + sizeof(OMX_U32);
 
         if (portIndex >= pExynosComponent->portParam.nPorts) {
             ret = OMX_ErrorBadPortIndex;
@@ -1171,7 +1178,9 @@ OMX_ERRORTYPE Exynos_OMX_SetParameter(
             goto EXIT;
         }
 
-        Exynos_OSAL_Memcpy(&pExynosPort->portDefinition, portDefinition, portDefinition->nSize);
+        Exynos_OSAL_Memcpy(((char *)&pExynosPort->portDefinition) + nOffset,
+                           ((char *)portDefinition) + nOffset,
+                           portDefinition->nSize - nOffset);
     }
         break;
     case OMX_IndexParamPriorityMgmt:
@@ -1543,7 +1552,6 @@ OMX_ERRORTYPE Exynos_OMX_BaseComponent_Constructor(
     pOMXComponent->SendCommand         = &Exynos_OMX_SendCommand;
     pOMXComponent->GetState            = &Exynos_OMX_GetState;
     pOMXComponent->SetCallbacks        = &Exynos_OMX_SetCallbacks;
-    pOMXComponent->UseEGLImage         = &Exynos_OMX_UseEGLImage;
 
 EXIT:
     FunctionOut();

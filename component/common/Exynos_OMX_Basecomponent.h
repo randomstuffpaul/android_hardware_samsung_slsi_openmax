@@ -106,8 +106,8 @@ typedef struct _EXYNOS_OMX_BASECOMPONENT
 
     OMX_ERRORTYPE (*exynos_AllocateTunnelBuffer)(EXYNOS_OMX_BASEPORT *pOMXBasePort, OMX_U32 nPortIndex);
     OMX_ERRORTYPE (*exynos_FreeTunnelBuffer)(EXYNOS_OMX_BASEPORT *pOMXBasePort, OMX_U32 nPortIndex);
-    OMX_ERRORTYPE (*exynos_BufferProcessCreate)(OMX_COMPONENTTYPE *pOMXComponent);
-    OMX_ERRORTYPE (*exynos_BufferProcessTerminate)(OMX_COMPONENTTYPE *pOMXComponent);
+    OMX_ERRORTYPE (*exynos_BufferProcessCreate)(OMX_HANDLETYPE pOMXComponent);
+    OMX_ERRORTYPE (*exynos_BufferProcessTerminate)(OMX_HANDLETYPE pOMXComponent);
     OMX_ERRORTYPE (*exynos_BufferFlush)(OMX_COMPONENTTYPE *pOMXComponent, OMX_S32 nPortIndex, OMX_BOOL bEvent);
 } EXYNOS_OMX_BASECOMPONENT;
 
