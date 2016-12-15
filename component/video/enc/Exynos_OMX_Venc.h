@@ -40,23 +40,23 @@
 #define DEFAULT_FRAME_WIDTH          176
 #define DEFAULT_FRAME_HEIGHT         144
 
+#define MAX_FRAME_WIDTH          1920
+#define MAX_FRAME_HEIGHT         1080
+
 #define DEFAULT_VIDEO_INPUT_BUFFER_SIZE    (ALIGN_TO_16B(DEFAULT_FRAME_WIDTH) * ALIGN_TO_16B(DEFAULT_FRAME_HEIGHT) + \
                                                                                 ALIGN((ALIGN_TO_16B(DEFAULT_FRAME_WIDTH) * ALIGN_TO_16B(DEFAULT_FRAME_HEIGHT))/2,256))
-#define DEFAULT_VIDEO_OUTPUT_BUFFER_SIZE   (DEFAULT_FRAME_WIDTH * DEFAULT_FRAME_HEIGHT) * 2
+#define DEFAULT_VIDEO_OUTPUT_BUFFER_SIZE   (DEFAULT_FRAME_WIDTH * DEFAULT_FRAME_HEIGHT) * 3 / 2
 
 #define MFC_INPUT_BUFFER_NUM_MAX            3
 #define MFC_OUTPUT_BUFFER_NUM_MAX           4
 
-#define DEFAULT_MFC_INPUT_YBUFFER_SIZE      ALIGN_TO_16B(2560) * ALIGN_TO_16B(1600)
+#define DEFAULT_MFC_INPUT_YBUFFER_SIZE      ALIGN_TO_16B(MAX_FRAME_WIDTH) * ALIGN_TO_16B(MAX_FRAME_HEIGHT)
 #define DEFAULT_MFC_INPUT_CBUFFER_SIZE      ALIGN((DEFAULT_MFC_INPUT_YBUFFER_SIZE / 2), 256)
-#define DEFAULT_MFC_OUTPUT_BUFFER_SIZE      2560 * 1600 * 3 / 2
+#define DEFAULT_MFC_OUTPUT_BUFFER_SIZE      MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT * 3 / 2
 
-#ifdef USE_ENCODER_RGBINPUT_SUPPORT
-#define INPUT_PORT_SUPPORTFORMAT_NUM_MAX    8
-#else
-#define INPUT_PORT_SUPPORTFORMAT_NUM_MAX    5
-#endif
-#define OUTPUT_PORT_SUPPORTFORMAT_NUM_MAX   1
+#define INPUT_PORT_SUPPORTFORMAT_DEFAULT_NUM    5
+#define INPUT_PORT_SUPPORTFORMAT_NUM_MAX        (INPUT_PORT_SUPPORTFORMAT_DEFAULT_NUM + 4)
+#define OUTPUT_PORT_SUPPORTFORMAT_NUM_MAX       1
 
 #define MFC_DEFAULT_INPUT_BUFFER_PLANE  2
 #define MFC_DEFAULT_OUTPUT_BUFFER_PLANE 1
@@ -64,9 +64,6 @@
 #define MAX_INPUTBUFFER_NUM_DYNAMIC         0 /* Dynamic number of metadata buffer */
 #define MAX_OUTPUTBUFFER_NUM_DYNAMIC        0 /* Dynamic number of metadata buffer */
 
-// The largest metadata buffer size advertised
-// when metadata buffer mode is used for video encoding
-#define  MAX_INPUT_METADATA_BUFFER_SIZE (64)
 
 typedef struct
 {
@@ -82,17 +79,11 @@ typedef struct _BYPASS_BUFFER_INFO
 
 typedef struct _CODEC_ENC_BUFFER
 {
-    void *pVirAddr[MAX_BUFFER_PLANE];   /* virtual address   */
-    int   bufferSize[MAX_BUFFER_PLANE]; /* buffer alloc size */
-    int   fd[MAX_BUFFER_PLANE];  /* buffer FD */
-    int   dataSize;              /* total data length */
+    void           *pVirAddr[MAX_BUFFER_PLANE];   /* virtual address   */
+    unsigned long   bufferSize[MAX_BUFFER_PLANE]; /* buffer alloc size */
+    int             fd[MAX_BUFFER_PLANE];         /* buffer FD */
+    int             dataSize;                     /* total data length */
 } CODEC_ENC_BUFFER;
-
-typedef struct _ENCODE_CODEC_EXTRA_BUFFERINFO
-{
-    /* For Encode Input */
-    OMX_COLOR_FORMATTYPE eColorFormat;
-} ENCODE_CODEC_EXTRA_BUFFERINFO;
 
 typedef struct _EXYNOS_OMX_VIDEOENC_COMPONENT
 {
@@ -117,9 +108,10 @@ typedef struct _EXYNOS_OMX_VIDEOENC_COMPONENT
     /* For DRM Record */
     OMX_BOOL bDRMPlayerMode;
 
-    OMX_BOOL configChange;
-    OMX_BOOL IntraRefreshVOP;
-    OMX_VIDEO_CONTROLRATETYPE eControlRate[ALL_PORT_NUM];
+    OMX_BOOL                         configChange;
+    OMX_BOOL                         IntraRefreshVOP;
+    OMX_VIDEO_CONTROLRATETYPE        eControlRate[ALL_PORT_NUM];
+    OMX_VIDEO_QPRANGETYPE            qpRange;
     OMX_VIDEO_PARAM_QUANTIZATIONTYPE quantization;
     OMX_VIDEO_PARAM_INTRAREFRESHTYPE intraRefresh;
 
@@ -127,7 +119,6 @@ typedef struct _EXYNOS_OMX_VIDEOENC_COMPONENT
     OMX_BOOL bFirstOutput;
 
     OMX_COLOR_FORMATTYPE ANBColorFormat;
-    OMX_BOOL bRGBSupport;
 
     /* CSC handle */
     OMX_PTR csc_handle;
@@ -146,26 +137,27 @@ typedef struct _EXYNOS_OMX_VIDEOENC_COMPONENT
     int (*exynos_checkInputFrame) (OMX_U8 *pInputStream, OMX_U32 buffSize, OMX_U32 flag,
                                    OMX_BOOL bPreviousFrameEOF, OMX_BOOL *pbEndOfFrame);
     OMX_ERRORTYPE (*exynos_codec_getCodecInputPrivateData) (OMX_PTR codecBuffer, OMX_PTR addr[], OMX_U32 size[]);
-    OMX_ERRORTYPE (*exynos_codec_getCodecOutputPrivateData) (OMX_PTR codecBuffer, OMX_PTR addr, OMX_U32 *size);
+    OMX_ERRORTYPE (*exynos_codec_getCodecOutputPrivateData) (OMX_PTR codecBuffer, OMX_PTR *addr, OMX_U32 *size);
+
+    OMX_BOOL      (*exynos_codec_checkFormatSupport)(EXYNOS_OMX_BASECOMPONENT *pExynosComponent, OMX_COLOR_FORMATTYPE eColorFormat);
 } EXYNOS_OMX_VIDEOENC_COMPONENT;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-inline void Exynos_UpdateFrameSize(OMX_COMPONENTTYPE *pOMXComponent);
+inline extern void Exynos_UpdateFrameSize(OMX_COMPONENTTYPE *pOMXComponent);
+void Exynos_Input_SetSupportFormat(EXYNOS_OMX_BASECOMPONENT *pExynosComponent);
+OMX_COLOR_FORMATTYPE Exynos_Input_GetActualColorFormat(EXYNOS_OMX_BASECOMPONENT *pExynosComponent);
 OMX_BOOL Exynos_Check_BufferProcess_State(EXYNOS_OMX_BASECOMPONENT *pExynosComponent, OMX_U32 nPortIndex);
-OMX_ERRORTYPE Exynos_Input_CodecBufferToData(EXYNOS_OMX_BASECOMPONENT *pExynosComponent, OMX_PTR codecBuffer, EXYNOS_OMX_DATA *pData);
-OMX_ERRORTYPE Exynos_Output_CodecBufferToData(CODEC_ENC_BUFFER *pCodecBuffer, EXYNOS_OMX_DATA *pData);
-
-
+OMX_ERRORTYPE Exynos_CodecBufferToData(CODEC_ENC_BUFFER *codecBuffer, EXYNOS_OMX_DATA *pData, OMX_U32 nPortIndex);
 OMX_ERRORTYPE Exynos_OMX_SrcInputBufferProcess(OMX_HANDLETYPE hComponent);
 OMX_ERRORTYPE Exynos_OMX_SrcOutputBufferProcess(OMX_HANDLETYPE hComponent);
 OMX_ERRORTYPE Exynos_OMX_DstInputBufferProcess(OMX_HANDLETYPE hComponent);
 OMX_ERRORTYPE Exynos_OMX_DstOutputBufferProcess(OMX_HANDLETYPE hComponent);
 OMX_ERRORTYPE Exynos_OMX_VideoEncodeComponentInit(OMX_IN OMX_HANDLETYPE hComponent);
 OMX_ERRORTYPE Exynos_OMX_VideoEncodeComponentDeinit(OMX_IN OMX_HANDLETYPE hComponent);
-
+OMX_ERRORTYPE Exynos_Allocate_CodecBuffers(OMX_COMPONENTTYPE *pOMXComponent, OMX_U32 nPortIndex, int nBufferCnt, OMX_U32 nPlaneSize[MAX_BUFFER_PLANE]);
 void Exynos_Free_CodecBuffers(OMX_COMPONENTTYPE *pOMXComponent, OMX_U32 nPortIndex);
 
 #ifdef __cplusplus

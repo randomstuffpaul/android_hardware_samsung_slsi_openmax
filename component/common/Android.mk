@@ -26,7 +26,9 @@ ifeq ($(BOARD_USE_KHRONOS_OMX_HEADER), true)
 LOCAL_CFLAGS += -DUSE_KHRONOS_OMX_HEADER
 LOCAL_C_INCLUDES += $(EXYNOS_OMX_INC)/khronos
 else
+ifeq ($(BOARD_USE_ANDROID), true)
 LOCAL_C_INCLUDES += $(ANDROID_MEDIA_INC)/openmax
+endif
 endif
 
 include $(BUILD_STATIC_LIBRARY)
@@ -38,7 +40,6 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_SRC_FILES := \
 	Exynos_OMX_Resourcemanager.c
 
-LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE := libExynosOMX_Resourcemanager
 
 LOCAL_CFLAGS :=
@@ -58,7 +59,9 @@ ifeq ($(BOARD_USE_KHRONOS_OMX_HEADER), true)
 LOCAL_CFLAGS += -DUSE_KHRONOS_OMX_HEADER
 LOCAL_C_INCLUDES += $(EXYNOS_OMX_INC)/khronos
 else
+ifeq ($(BOARD_USE_ANDROID), true)
 LOCAL_C_INCLUDES += $(ANDROID_MEDIA_INC)/openmax
+endif
 endif
 
 include $(BUILD_SHARED_LIBRARY)

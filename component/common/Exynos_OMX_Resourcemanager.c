@@ -41,7 +41,7 @@
 
 #define MAX_RESOURCE_VIDEO_DEC 8
 #define MAX_RESOURCE_VIDEO_ENC 8
-#define MAX_RESOURCE_AUDIO_DEC 1
+#define MAX_RESOURCE_AUDIO_DEC 10
 /* Add new resource block */
 
 typedef enum _EXYNOS_OMX_RESOURCE

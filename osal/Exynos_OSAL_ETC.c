@@ -28,10 +28,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <system/graphics.h>
 
 #include "Exynos_OSAL_Memory.h"
 #include "Exynos_OSAL_ETC.h"
 #include "Exynos_OSAL_Log.h"
+#include "Exynos_OMX_Macros.h"
+
+#include "ExynosVideoApi.h"
+#include "exynos_format.h"
 
 static struct timeval perfStart[PERF_ID_MAX+1], perfStop[PERF_ID_MAX+1];
 static unsigned long perfTime[PERF_ID_MAX+1], totalPerfTime[PERF_ID_MAX+1];
@@ -123,14 +128,14 @@ EXIT:
 }
 #endif /* HAVE_GETLINE */
 
-OMX_PTR Exynos_OSAL_Strcpy(OMX_PTR dest, OMX_PTR src)
+size_t Exynos_OSAL_Strcpy(OMX_PTR dest, OMX_PTR src)
 {
-    return strcpy(dest, src);
+    return strlcpy(dest, src, (size_t)(strlen((const char *)src) + 1));
 }
 
-OMX_PTR Exynos_OSAL_Strncpy(OMX_PTR dest, OMX_PTR src, size_t num)
+size_t Exynos_OSAL_Strncpy(OMX_PTR dest, OMX_PTR src, size_t num)
 {
-    return strncpy(dest, src, num);
+    return strlcpy(dest, src, (size_t)(num + 1));
 }
 
 OMX_S32 Exynos_OSAL_Strcmp(OMX_PTR str1, OMX_PTR str2)
@@ -143,14 +148,15 @@ OMX_S32 Exynos_OSAL_Strncmp(OMX_PTR str1, OMX_PTR str2, size_t num)
     return strncmp(str1, str2, num);
 }
 
-OMX_PTR Exynos_OSAL_Strcat(OMX_PTR dest, OMX_PTR src)
+size_t Exynos_OSAL_Strcat(OMX_PTR dest, OMX_PTR src)
 {
-    return strcat(dest, src);
+    return strlcat(dest, src, (size_t)(strlen((const char *)dest) + strlen((const char *)src) + 1));
 }
 
-OMX_PTR Exynos_OSAL_Strncat(OMX_PTR dest, OMX_PTR src, size_t num)
+size_t Exynos_OSAL_Strncat(OMX_PTR dest, OMX_PTR src, size_t num)
 {
-    return strncat(dest, src, num);
+    /* caution : num should be a size of dest buffer */
+    return strlcat(dest, src, (size_t)(strlen((const char *)dest) + strlen((const char *)src) + 1));
 }
 
 size_t Exynos_OSAL_Strlen(const char *str)
@@ -240,7 +246,7 @@ unsigned int Exynos_OSAL_GetPlaneCount(
     OMX_COLOR_FORMATTYPE omx_format)
 {
     unsigned int plane_cnt = 0;
-    switch (omx_format) {
+    switch ((int)omx_format) {
     case OMX_COLOR_FormatYCbYCr:
     case OMX_COLOR_FormatYUV420Planar:
     case OMX_SEC_COLOR_FormatYVU420Planar:
@@ -253,10 +259,11 @@ unsigned int Exynos_OSAL_GetPlaneCount(
         break;
     case OMX_COLOR_Format32bitARGB8888:
     case OMX_COLOR_Format32bitBGRA8888:
+    case OMX_SEC_COLOR_Format32bitABGR8888:
         plane_cnt = 1;
         break;
     default:
-        Exynos_OSAL_Log(EXYNOS_LOG_ERROR, "%s: unsupported color format.", __func__);
+        Exynos_OSAL_Log(EXYNOS_LOG_ERROR, "%s: unsupported color format(%x).", __func__, omx_format);
         plane_cnt = 0;
         break;
     }
@@ -268,26 +275,222 @@ void Exynos_OSAL_GetPlaneSize(
     OMX_COLOR_FORMATTYPE    eColorFormat,
     OMX_U32                 nWidth,
     OMX_U32                 nHeight,
-    OMX_U32                 nPlaneSize[MAX_BUFFER_PLANE])
+    OMX_U32                 nDataSize[MAX_BUFFER_PLANE],
+    OMX_U32                 nAllocSize[MAX_BUFFER_PLANE])
 {
-    switch (eColorFormat) {
+    switch ((int)eColorFormat) {
     case OMX_COLOR_FormatYUV420Planar:
     case (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatYVU420Planar:
-        nPlaneSize[0] = nWidth * nHeight;
-        nPlaneSize[1] = nWidth * nHeight >> 2;
-        nPlaneSize[2] = nWidth * nHeight >> 2;
+        nDataSize[0] = nWidth * nHeight;
+        nDataSize[1] = nDataSize[0] >> 2;
+        nDataSize[2] = nDataSize[1];
+
+        nAllocSize[0] = ALIGN(ALIGN(nWidth, 16) * ALIGN(nHeight, 16), 256);
+        nAllocSize[1] = ALIGN(ALIGN(nWidth >> 1, 16) * (ALIGN(nHeight, 16) >> 1), 256);
+        nAllocSize[2] = nAllocSize[1];
         break;
     case OMX_COLOR_FormatYUV420SemiPlanar:
     case (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatNV21Linear:
     case (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatNV12Tiled:
-        nPlaneSize[0] = nWidth * nHeight;
-        nPlaneSize[1] = nWidth * nHeight >> 1;
+        nDataSize[0] = nWidth * nHeight;
+        nDataSize[1] = nDataSize[0] >> 1;
+
+        nAllocSize[0] = ALIGN(ALIGN(nWidth, 16) * ALIGN(nHeight, 16), 256);
+        nAllocSize[1] = ALIGN(ALIGN(nWidth, 16) * ALIGN(nHeight, 16) >> 1, 256);
         break;
     case OMX_COLOR_Format32bitARGB8888:
     case OMX_COLOR_Format32bitBGRA8888:
-        nPlaneSize[0] = nWidth * nHeight * 4;
+    case OMX_SEC_COLOR_Format32bitABGR8888:
+        nDataSize[0] = nWidth * nHeight * 4;
+
+        nAllocSize[0] = ALIGN(ALIGN(nWidth, 16) * ALIGN(nHeight, 16) * 4, 256);
+        break;
+    default:
+        Exynos_OSAL_Log(EXYNOS_LOG_ERROR, "%s: unsupported color format(%x).", __func__, eColorFormat);
+        break;
+    }
+}
+
+int Exynos_OSAL_OMX2VideoFormat(
+    OMX_COLOR_FORMATTYPE eColorFormat)
+{
+    ExynosVideoColorFormatType nVideoFormat = VIDEO_COLORFORMAT_UNKNOWN;
+
+    switch ((int)eColorFormat) {
+    case OMX_COLOR_FormatYUV420SemiPlanar:
+        nVideoFormat = VIDEO_COLORFORMAT_NV12;
+        break;
+    case OMX_SEC_COLOR_FormatNV21Linear:
+    case OMX_SEC_COLOR_FormatNV21LPhysicalAddress:
+        nVideoFormat = VIDEO_COLORFORMAT_NV21;
+        break;
+    case OMX_SEC_COLOR_FormatNV12Tiled:
+    case OMX_SEC_COLOR_FormatNV12LPhysicalAddress:
+        nVideoFormat = VIDEO_COLORFORMAT_NV12_TILED;
+        break;
+    case OMX_COLOR_FormatYUV420Planar:
+        nVideoFormat = VIDEO_COLORFORMAT_I420;
+        break;
+    case OMX_SEC_COLOR_FormatYVU420Planar:
+        nVideoFormat = VIDEO_COLORFORMAT_YV12;
+        break;
+    case OMX_COLOR_Format32bitBGRA8888:
+        nVideoFormat = VIDEO_COLORFORMAT_ARGB8888;
+        break;
+    case OMX_COLOR_Format32bitARGB8888:
+        nVideoFormat = VIDEO_COLORFORMAT_BGRA8888;
+        break;
+    case OMX_SEC_COLOR_Format32bitABGR8888:
+        nVideoFormat = VIDEO_COLORFORMAT_RGBA8888;
         break;
     default:
         break;
     }
+
+    return (int)nVideoFormat;
+}
+
+OMX_COLOR_FORMATTYPE Exynos_OSAL_Video2OMXFormat(
+    int nVideoFormat)
+{
+    OMX_COLOR_FORMATTYPE eOMXFormat = OMX_COLOR_FormatUnused;
+
+    switch (nVideoFormat) {
+    case VIDEO_COLORFORMAT_NV12:
+        eOMXFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+        break;
+    case VIDEO_COLORFORMAT_NV21:
+        eOMXFormat = (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatNV21Linear;
+        break;
+    case VIDEO_COLORFORMAT_NV12_TILED:
+        eOMXFormat = (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatNV12Tiled;
+        break;
+    case VIDEO_COLORFORMAT_I420:
+        eOMXFormat = OMX_COLOR_FormatYUV420Planar;
+        break;
+    case VIDEO_COLORFORMAT_YV12:
+        eOMXFormat = (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatYVU420Planar;
+        break;
+    case VIDEO_COLORFORMAT_ARGB8888:
+        eOMXFormat = OMX_COLOR_Format32bitBGRA8888;
+        break;
+    case VIDEO_COLORFORMAT_BGRA8888:
+        eOMXFormat = OMX_COLOR_Format32bitARGB8888;
+        break;
+    case VIDEO_COLORFORMAT_RGBA8888:
+        eOMXFormat = (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_Format32bitABGR8888;
+        break;
+    default:
+        break;
+    }
+
+    return eOMXFormat;
+}
+
+OMX_COLOR_FORMATTYPE Exynos_OSAL_HAL2OMXColorFormat(
+    unsigned int nHALFormat)
+{
+    OMX_COLOR_FORMATTYPE eOMXFormat = OMX_COLOR_FormatUnused;
+
+    switch (nHALFormat) {
+    case HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_SP:
+    case HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_SP_M:
+        eOMXFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+        break;
+    case HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_SP_M_TILED:
+        eOMXFormat = (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatNV12Tiled;
+        break;
+    case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+    case HAL_PIXEL_FORMAT_EXYNOS_YCrCb_420_SP_M:
+        eOMXFormat = (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatNV21Linear;
+        break;
+    case HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_P:
+    case HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_P_M:
+        eOMXFormat = OMX_COLOR_FormatYUV420Planar;
+        break;
+    case HAL_PIXEL_FORMAT_YV12:
+    case HAL_PIXEL_FORMAT_EXYNOS_YV12_M:
+        eOMXFormat = (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_FormatYVU420Planar;
+        break;
+    case HAL_PIXEL_FORMAT_YCbCr_422_I:
+        eOMXFormat = OMX_COLOR_FormatYCbYCr;
+        break;
+    case HAL_PIXEL_FORMAT_BGRA_8888:
+        eOMXFormat = OMX_COLOR_Format32bitARGB8888;
+        break;
+    case HAL_PIXEL_FORMAT_EXYNOS_ARGB_8888:
+        eOMXFormat = OMX_COLOR_Format32bitBGRA8888;
+        break;
+    case HAL_PIXEL_FORMAT_RGBA_8888:
+        eOMXFormat = (OMX_COLOR_FORMATTYPE)OMX_SEC_COLOR_Format32bitABGR8888;
+        break;
+    default:
+        Exynos_OSAL_Log(EXYNOS_LOG_ERROR, "HAL format is unsupported(0x%x)", nHALFormat);
+        eOMXFormat = OMX_COLOR_FormatUnused;
+        break;
+    }
+
+    return eOMXFormat;
+}
+
+unsigned int Exynos_OSAL_OMX2HALPixelFormat(
+    OMX_COLOR_FORMATTYPE eOMXFormat,
+    PLANE_TYPE           ePlaneType)
+{
+    unsigned int nHALFormat = 0;
+
+    if (ePlaneType == PLANE_SINGLE) {  /* configured by single FD */
+        switch ((int)eOMXFormat) {
+        /* YUV formats */
+        case OMX_COLOR_FormatYUV420SemiPlanar: // gralloc ?
+            nHALFormat = HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_SP;
+            break;
+        case OMX_SEC_COLOR_FormatNV21Linear:
+            nHALFormat = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+            break;
+        case OMX_COLOR_FormatYUV420Planar:
+            nHALFormat = HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_P;
+            break;
+        case OMX_SEC_COLOR_FormatYVU420Planar:
+            nHALFormat = HAL_PIXEL_FORMAT_YV12;
+            break;
+        case OMX_COLOR_FormatYCbYCr:
+            nHALFormat = HAL_PIXEL_FORMAT_YCbCr_422_I;
+            break;
+        /* RGB formats */
+        case OMX_COLOR_Format32bitARGB8888:
+            nHALFormat = HAL_PIXEL_FORMAT_BGRA_8888;
+            break;
+        case OMX_COLOR_Format32bitBGRA8888:
+             nHALFormat = HAL_PIXEL_FORMAT_EXYNOS_ARGB_8888;
+             break;
+        case OMX_SEC_COLOR_Format32bitABGR8888:
+            nHALFormat = HAL_PIXEL_FORMAT_RGBA_8888;
+            break;
+        default:
+            break;
+        }
+    } else {  /* configured by multiple FD */
+        switch ((int)eOMXFormat) {
+        case OMX_COLOR_FormatYUV420SemiPlanar:
+            nHALFormat = HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_SP_M;
+            break;
+        case OMX_SEC_COLOR_FormatNV12Tiled:
+            nHALFormat = HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_SP_M_TILED;
+            break;
+        case OMX_SEC_COLOR_FormatNV21Linear:
+            nHALFormat = HAL_PIXEL_FORMAT_EXYNOS_YCrCb_420_SP_M;
+            break;
+        case OMX_COLOR_FormatYUV420Planar:
+            nHALFormat = HAL_PIXEL_FORMAT_EXYNOS_YCbCr_420_P_M;
+            break;
+        case OMX_SEC_COLOR_FormatYVU420Planar:
+            nHALFormat = HAL_PIXEL_FORMAT_EXYNOS_YV12_M;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return nHALFormat;
 }

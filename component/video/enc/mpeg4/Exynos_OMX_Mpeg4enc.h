@@ -49,10 +49,11 @@ typedef struct _EXYNOS_MFC_MPEG4ENC_HANDLE
     OMX_BOOL bConfiguredMFCDst;
     CODEC_TYPE                 codecType;
 
-    ExynosVideoDecOps *pEncOps;
-    ExynosVideoDecBufferOps *pInbufOps;
-    ExynosVideoDecBufferOps *pOutbufOps;
+    ExynosVideoEncOps       *pEncOps;
+    ExynosVideoEncBufferOps *pInbufOps;
+    ExynosVideoEncBufferOps *pOutbufOps;
     ExynosVideoEncParam      encParam;
+    ExynosVideoInstInfo      videoInstInfo;
 } EXYNOS_MFC_MPEG4ENC_HANDLE;
 
 typedef struct _EXYNOS_MPEG4ENC_HANDLE

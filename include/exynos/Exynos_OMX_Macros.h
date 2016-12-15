@@ -34,9 +34,7 @@
 /*
  * MACROS
  */
-#ifndef ALIGN
 #define ALIGN(x, a)       (((x) + (a) - 1) & ~((a) - 1))
-#endif
 #define ALIGN_TO_16B(x)   ((((x) + (1 <<  4) - 1) >>  4) <<  4)
 #define ALIGN_TO_32B(x)   ((((x) + (1 <<  5) - 1) >>  5) <<  5)
 #define ALIGN_TO_128B(x)  ((((x) + (1 <<  7) - 1) >>  7) <<  7)

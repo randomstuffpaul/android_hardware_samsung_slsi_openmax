@@ -73,12 +73,6 @@ typedef struct _EXYNOS_OMX_DATABUFFER
 
 typedef void* CODEC_EXTRA_BUFFERINFO;
 
-typedef struct _EXYNOS_OMX_SINGLEPLANE_DATA
-{
-    OMX_PTR dataBuffer;
-    int     fd;
-} EXYNOS_OMX_SINGLEPLANE_DATA;
-
 typedef struct _EXYNOS_OMX_MULTIPLANE_DATA
 {
     OMX_U32 validPlaneNum;
@@ -88,10 +82,7 @@ typedef struct _EXYNOS_OMX_MULTIPLANE_DATA
 
 typedef struct _EXYNOS_OMX_DATA
 {
-    union {
-        EXYNOS_OMX_SINGLEPLANE_DATA singlePlaneBuffer;
-        EXYNOS_OMX_MULTIPLANE_DATA multiPlaneBuffer;
-    } buffer;
+    EXYNOS_OMX_MULTIPLANE_DATA multiPlaneBuffer;
     OMX_U32   allocSize;
     OMX_U32   dataLen;
     OMX_U32   usedDataLen;
@@ -150,8 +141,7 @@ typedef struct _EXYNOS_OMX_BASEPORT
     OMX_PARAM_PORTDEFINITIONTYPE   portDefinition;
     OMX_HANDLETYPE                 bufferSemID;
     EXYNOS_QUEUE                   bufferQ;
-    OMX_U32                        assignedBufferNum;
-    OMX_U32                        nPlaneCnt;
+    OMX_S32                        assignedBufferNum;
     OMX_STATETYPE                  portState;
     OMX_HANDLETYPE                 loadedResource;
     OMX_HANDLETYPE                 unloadedResource;
@@ -169,9 +159,12 @@ typedef struct _EXYNOS_OMX_BASEPORT
     OMX_BUFFERSUPPLIERTYPE         bufferSupplier;
     OMX_U32                        tunnelFlags;
 
+    OMX_COLOR_FORMATTYPE          *supportFormat;
     OMX_BOOL                       bIsANBEnabled;
+    EXYNOS_ANB_TYPE                eANBType;
     OMX_BOOL                       bStoreMetaData;
     OMX_BOOL                       bNeedContigMem;
+    OMX_BOOL                       bDynamicDPBMode;
 
     EXYNOS_OMX_BUFFERPROCESS_TYPE  bufferProcessType;
     EXYNOS_OMX_PORT_WAY_TYPE       portWayType;
@@ -211,8 +204,11 @@ OMX_ERRORTYPE Exynos_OMX_Port_Destructor(OMX_HANDLETYPE hComponent);
 OMX_ERRORTYPE Exynos_ResetDataBuffer(EXYNOS_OMX_DATABUFFER *pDataBuffer);
 OMX_ERRORTYPE Exynos_ResetCodecData(EXYNOS_OMX_DATA *pData);
 OMX_ERRORTYPE Exynos_Shared_BufferToData(EXYNOS_OMX_DATABUFFER *pUseBuffer, EXYNOS_OMX_DATA *pData, EXYNOS_OMX_PLANE nPlane);
-OMX_ERRORTYPE Exynos_OMX_OutputBufferReturn(OMX_COMPONENTTYPE *pOMXComponent, OMX_BUFFERHEADERTYPE* bufferHeader);
-OMX_ERRORTYPE Exynos_OMX_InputBufferReturn(OMX_COMPONENTTYPE *pOMXComponent, OMX_BUFFERHEADERTYPE* bufferHeader);
+OMX_ERRORTYPE Exynos_OMX_InputBufferReturn(OMX_COMPONENTTYPE *pOMXComponent, OMX_BUFFERHEADERTYPE *bufferHeader);
+OMX_ERRORTYPE Exynos_OMX_OutputBufferReturn(OMX_COMPONENTTYPE *pOMXComponent, OMX_BUFFERHEADERTYPE *bufferHeader);
+int Exynos_GetPlaneFromPort(EXYNOS_OMX_BASEPORT *pPort);
+OMX_ERRORTYPE Exynos_SetPlaneFromPort(EXYNOS_OMX_BASEPORT *pPort, int nPlaneNum);
+OMX_ERRORTYPE Exynos_SetPlaneToPort(EXYNOS_OMX_BASEPORT *pPort, int nPlaneNum);
 OMX_ERRORTYPE Exynos_OMX_FillThisBuffer(OMX_IN OMX_HANDLETYPE hComponent, OMX_IN OMX_BUFFERHEADERTYPE *pBuffer);
 
 #ifdef __cplusplus

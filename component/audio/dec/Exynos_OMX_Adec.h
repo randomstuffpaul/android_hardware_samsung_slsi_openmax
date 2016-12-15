@@ -47,6 +47,9 @@
 #define INPUT_PORT_SUPPORTFORMAT_NUM_MAX    1
 #define OUTPUT_PORT_SUPPORTFORMAT_NUM_MAX   1
 
+#define AUDIO_DATA_PLANE                    0
+
+
 typedef struct _SRP_DEC_INPUT_BUFFER
 {
     void *PhyAddr;      // physical address

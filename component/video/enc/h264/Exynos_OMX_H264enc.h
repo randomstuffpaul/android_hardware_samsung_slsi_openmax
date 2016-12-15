@@ -52,10 +52,11 @@ typedef struct _EXYNOS_MFC_H264ENC_HANDLE
     OMX_BOOL bPrependSpsPpsToIdr;
     EXTRA_DATA headerData;
 
-    ExynosVideoDecOps *pEncOps;
-    ExynosVideoDecBufferOps *pInbufOps;
-    ExynosVideoDecBufferOps *pOutbufOps;
+    ExynosVideoEncOps       *pEncOps;
+    ExynosVideoEncBufferOps *pInbufOps;
+    ExynosVideoEncBufferOps *pOutbufOps;
     ExynosVideoEncParam      encParam;
+    ExynosVideoInstInfo      videoInstInfo;
 } EXYNOS_MFC_H264ENC_HANDLE;
 
 typedef struct _EXYNOS_H264ENC_HANDLE

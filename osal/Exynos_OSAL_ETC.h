@@ -34,10 +34,10 @@
 extern "C" {
 #endif
 
-OMX_PTR Exynos_OSAL_Strcpy(OMX_PTR dest, OMX_PTR src);
+size_t Exynos_OSAL_Strcpy(OMX_PTR dest, OMX_PTR src);
 OMX_S32 Exynos_OSAL_Strncmp(OMX_PTR str1, OMX_PTR str2, size_t num);
 OMX_S32 Exynos_OSAL_Strcmp(OMX_PTR str1, OMX_PTR str2);
-OMX_PTR Exynos_OSAL_Strcat(OMX_PTR dest, OMX_PTR src);
+size_t Exynos_OSAL_Strcat(OMX_PTR dest, OMX_PTR src);
 size_t Exynos_OSAL_Strlen(const char *str);
 ssize_t getline(char **ppLine, size_t *len, FILE *stream);
 
@@ -60,7 +60,17 @@ int Exynos_OSAL_PerfOver30ms(PERF_ID_TYPE id);
 void Exynos_OSAL_PerfPrint(OMX_STRING prefix, PERF_ID_TYPE id);
 
 unsigned int Exynos_OSAL_GetPlaneCount(OMX_COLOR_FORMATTYPE omx_format);
-void Exynos_OSAL_GetPlaneSize(OMX_COLOR_FORMATTYPE eColorFormat, OMX_U32 nWidth, OMX_U32 nHeight, OMX_U32 nPlaneSize[MAX_BUFFER_PLANE]);
+void Exynos_OSAL_GetPlaneSize(OMX_COLOR_FORMATTYPE eColorFormat, OMX_U32 nWidth, OMX_U32 nHeight, OMX_U32 nDataSize[MAX_BUFFER_PLANE], OMX_U32 nAllocSize[MAX_BUFFER_PLANE]);
+
+int Exynos_OSAL_OMX2VideoFormat(OMX_COLOR_FORMATTYPE eColorFormat);
+OMX_COLOR_FORMATTYPE Exynos_OSAL_Video2OMXFormat(int nVideoFormat);
+
+typedef enum _PLANE_TYPE {
+    PLANE_SINGLE   = 0,
+    PLANE_MULTIPLE = 1,
+} PLANE_TYPE;
+OMX_COLOR_FORMATTYPE Exynos_OSAL_HAL2OMXColorFormat(unsigned int nHALFormat);
+unsigned int Exynos_OSAL_OMX2HALPixelFormat(OMX_COLOR_FORMATTYPE eOMXFormat, PLANE_TYPE ePlaneType);
 #ifdef __cplusplus
 }
 #endif

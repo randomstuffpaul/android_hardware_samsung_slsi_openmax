@@ -39,7 +39,7 @@
 
 /* VP8 */
 #define EXYNOS_OMX_COMPONENT_VP8_ENC      "OMX.Exynos.VP8.Encoder"
-#define EXYNOS_OMX_COMPONENT_VP8_ENC_ROLE "video_encoder.vpx"
+#define EXYNOS_OMX_COMPONENT_VP8_ENC_ROLE "video_encoder.vp8"
 
 
 #ifdef __cplusplus

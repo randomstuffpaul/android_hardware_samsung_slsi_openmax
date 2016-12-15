@@ -69,3 +69,8 @@ OMX_PTR Exynos_OSAL_Memmove(OMX_PTR dest, OMX_PTR src, OMX_S32 n)
 {
     return memmove(dest, src, n);
 }
+
+OMX_S32 Exynos_OSAL_Memcmp(OMX_PTR dest, OMX_PTR src, OMX_S32 n)
+{
+    return memcmp(dest, src, n);
+}
